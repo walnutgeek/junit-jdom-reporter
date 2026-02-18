@@ -1,5 +1,7 @@
 # junit-jdom-reporter
 
+[![CI](https://github.com/walnutgeek/junit-jdom-reporter/actions/workflows/ci.yml/badge.svg)](https://github.com/walnutgeek/junit-jdom-reporter/actions/workflows/ci.yml)
+
 Little helper that creates JUnit compatible XML using JDOM.
 
 A standalone Java library that produces JUnit/Surefire-compatible XML and plain-text report files. No JUnit runtime dependency -- just JDOM 2.0.5. Thread-safe.
