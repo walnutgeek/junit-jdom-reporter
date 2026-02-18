@@ -55,21 +55,19 @@ public class TestSuiteReporter {
     public Document toDocument() {
         Element root = new Element("testsuite");
         List<TestCaseReporter> orderedCases = getOrderedTestCases();
-
-        int failures = 0;
-        int errors = 0;
+        int failureCount = 0;
+        int errorCount = 0;
         double totalTime = 0;
-
         for (TestCaseReporter tc : orderedCases) {
-            if (tc.hasFailure()) failures++;
-            if (tc.hasError()) errors++;
+            if (tc.hasFailure()) failureCount++;
+            if (tc.hasError()) errorCount++;
             totalTime += tc.getTime();
         }
 
         root.setAttribute("name", name);
         root.setAttribute("tests", String.valueOf(orderedCases.size()));
-        root.setAttribute("failures", String.valueOf(failures));
-        root.setAttribute("errors", String.valueOf(errors));
+        root.setAttribute("failures", String.valueOf(failureCount));
+        root.setAttribute("errors", String.valueOf(errorCount));
         root.setAttribute("skipped", "0");
         root.setAttribute("time", formatTime(totalTime));
         root.setAttribute("timestamp", timestamp);
@@ -86,42 +84,7 @@ public class TestSuiteReporter {
         }
 
         for (TestCaseReporter tc : orderedCases) {
-            Element tcEl = new Element("testcase");
-            tcEl.setAttribute("name", tc.getName());
-            tcEl.setAttribute("classname", tc.getClassName());
-            tcEl.setAttribute("time", formatTime(tc.getTime()));
-
-            for (TestCaseReporter.Entry f : tc.getFailures()) {
-                Element fel = new Element("failure");
-                fel.setAttribute("type", f.getType());
-                fel.setAttribute("message", f.getMessage());
-                fel.setText(f.getBody());
-                tcEl.addContent(fel);
-            }
-
-            for (TestCaseReporter.Entry e : tc.getErrors()) {
-                Element eel = new Element("error");
-                eel.setAttribute("type", e.getType());
-                eel.setAttribute("message", e.getMessage());
-                eel.setText(e.getBody());
-                tcEl.addContent(eel);
-            }
-
-            String stdout = tc.getStdout();
-            if (!stdout.isEmpty()) {
-                Element sysout = new Element("system-out");
-                sysout.setText(stdout);
-                tcEl.addContent(sysout);
-            }
-
-            String stderr = tc.getStderr();
-            if (!stderr.isEmpty()) {
-                Element syserr = new Element("system-err");
-                syserr.setText(stderr);
-                tcEl.addContent(syserr);
-            }
-
-            root.addContent(tcEl);
+            root.addContent(buildTestCaseElement(tc));
         }
 
         return new Document(root);
@@ -137,14 +100,12 @@ public class TestSuiteReporter {
 
     public void writeText(File outputDir) throws IOException {
         List<TestCaseReporter> orderedCases = getOrderedTestCases();
-
-        int failures = 0;
-        int errors = 0;
+        int failureCount = 0;
+        int errorCount = 0;
         double totalTime = 0;
-
         for (TestCaseReporter tc : orderedCases) {
-            if (tc.hasFailure()) failures++;
-            if (tc.hasError()) errors++;
+            if (tc.hasFailure()) failureCount++;
+            if (tc.hasError()) errorCount++;
             totalTime += tc.getTime();
         }
 
@@ -153,30 +114,78 @@ public class TestSuiteReporter {
         sb.append("Test set: ").append(name).append("\n");
         sb.append("-------------------------------------------------------------------------------\n");
         sb.append(String.format("Tests run: %d, Failures: %d, Errors: %d, Skipped: 0, Time elapsed: %s s\n",
-                orderedCases.size(), failures, errors, formatTime(totalTime)));
+                orderedCases.size(), failureCount, errorCount, formatTime(totalTime)));
 
         for (TestCaseReporter tc : orderedCases) {
-            if (tc.hasFailure()) {
-                sb.append("\n");
-                sb.append(tc.getName()).append("  Time elapsed: ").append(formatTime(tc.getTime())).append(" s  <<< FAILURE!\n");
-                for (TestCaseReporter.Entry f : tc.getFailures()) {
-                    sb.append(f.getType()).append(": ").append(f.getMessage()).append("\n");
-                    sb.append(f.getBody()).append("\n");
-                }
-            }
-            if (tc.hasError()) {
-                sb.append("\n");
-                sb.append(tc.getName()).append("  Time elapsed: ").append(formatTime(tc.getTime())).append(" s  <<< ERROR!\n");
-                for (TestCaseReporter.Entry e : tc.getErrors()) {
-                    sb.append(e.getType()).append(": ").append(e.getMessage()).append("\n");
-                    sb.append(e.getBody()).append("\n");
-                }
-            }
+            appendTestCaseText(sb, tc);
         }
 
         File file = new File(outputDir, name + ".txt");
         try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), "UTF-8")) {
             writer.write(sb.toString());
+        }
+    }
+
+    private Element buildTestCaseElement(TestCaseReporter tc) {
+        Element tcEl = new Element("testcase");
+        tcEl.setAttribute("name", tc.getName());
+        tcEl.setAttribute("classname", tc.getClassName());
+        tcEl.setAttribute("time", formatTime(tc.getTime()));
+
+        for (TestCaseReporter.Entry f : tc.getFailures()) {
+            Element fel = new Element("failure");
+            fel.setAttribute("type", f.getType());
+            fel.setAttribute("message", f.getMessage());
+            fel.setText(f.getBody());
+            tcEl.addContent(fel);
+        }
+
+        for (TestCaseReporter.Entry e : tc.getErrors()) {
+            Element eel = new Element("error");
+            eel.setAttribute("type", e.getType());
+            eel.setAttribute("message", e.getMessage());
+            eel.setText(e.getBody());
+            tcEl.addContent(eel);
+        }
+
+        String stdout = tc.getStdout();
+        if (!stdout.isEmpty()) {
+            Element sysout = new Element("system-out");
+            sysout.setText(stdout);
+            tcEl.addContent(sysout);
+        }
+
+        String stderr = tc.getStderr();
+        if (!stderr.isEmpty()) {
+            Element syserr = new Element("system-err");
+            syserr.setText(stderr);
+            tcEl.addContent(syserr);
+        }
+
+        return tcEl;
+    }
+
+    private void appendTestCaseText(StringBuilder sb, TestCaseReporter tc) {
+        boolean hasFail = tc.hasFailure();
+        boolean hasErr = tc.hasError();
+        if (!hasFail && !hasErr) return;
+
+        sb.append("\n");
+        sb.append(tc.getName()).append("  Time elapsed: ").append(formatTime(tc.getTime())).append(" s  <<< ");
+        if (hasFail) {
+            sb.append("FAILURE!");
+        } else {
+            sb.append("ERROR!");
+        }
+        sb.append("\n");
+
+        for (TestCaseReporter.Entry f : tc.getFailures()) {
+            sb.append(f.getType()).append(": ").append(f.getMessage()).append("\n");
+            sb.append(f.getBody()).append("\n");
+        }
+        for (TestCaseReporter.Entry e : tc.getErrors()) {
+            sb.append(e.getType()).append(": ").append(e.getMessage()).append("\n");
+            sb.append(e.getBody()).append("\n");
         }
     }
 

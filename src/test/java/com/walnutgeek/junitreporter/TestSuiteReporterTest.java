@@ -266,6 +266,32 @@ public class TestSuiteReporterTest {
     }
 
     @Test
+    public void testWriteTextWithBothFailureAndError() throws IOException {
+        TestSuiteReporter suite = new TestSuiteReporter("com.example.MyTest");
+        TestCaseReporter tc = suite.testCase("testBoth");
+        tc.setTime(0.05);
+        tc.addFailure("AssertionError", "assertion msg", "fail trace");
+        tc.addError("RuntimeException", "runtime msg", "error trace");
+
+        File dir = tempDir.getRoot();
+        suite.writeText(dir);
+
+        String content = new String(Files.readAllBytes(
+            new File(dir, "com.example.MyTest.txt").toPath()), "UTF-8");
+        // Single block with FAILURE! marker (failure takes precedence)
+        assertTrue(content.contains("testBoth  Time elapsed: 0.050 s  <<< FAILURE!"));
+        // Both entries appear in the same block
+        assertTrue(content.contains("AssertionError: assertion msg"));
+        assertTrue(content.contains("fail trace"));
+        assertTrue(content.contains("RuntimeException: runtime msg"));
+        assertTrue(content.contains("error trace"));
+        // Only one header line for this test case (not two)
+        int firstIdx = content.indexOf("testBoth  Time elapsed:");
+        int secondIdx = content.indexOf("testBoth  Time elapsed:", firstIdx + 1);
+        assertEquals("Should have only one header line per test case", -1, secondIdx);
+    }
+
+    @Test
     public void testTimeIsSumOfTestCases() {
         TestSuiteReporter suite = new TestSuiteReporter("com.example.MyTest");
         suite.testCase("test1").setTime(1.0);
