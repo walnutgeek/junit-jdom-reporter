@@ -1,0 +1,235 @@
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Plan to implement                                                            │
+│                                                                              │
+│ GitHub Actions for junit-jdom-reporter                                       │
+│                                                                              │
+│ For Claude: Create two GitHub Actions workflow files and commit/push them.   │
+│                                                                              │
+│ Goal: Add CI/CD automation — CI on every push/PR, Release to Maven Central   │
+│ on version tags.                                                             │
+│                                                                              │
+│ ---                                                                          │
+│ Task 1: Create CI workflow                                                   │
+│                                                                              │
+│ File: .github/workflows/ci.yml                                               │
+│                                                                              │
+│ name: CI                                                                     │
+│                                                                              │
+│ on:                                                                          │
+│   push:                                                                      │
+│     branches: [ main ]                                                       │
+│   pull_request:                                                              │
+│     branches: [ main ]                                                       │
+│                                                                              │
+│ jobs:                                                                        │
+│   build:                                                                     │
+│     runs-on: ubuntu-latest                                                   │
+│     strategy:                                                                │
+│       matrix:                                                                │
+│         java-version: [ '8', '17' ]                                          │
+│     steps:                                                                   │
+│       - uses: actions/checkout@v4                                            │
+│       - uses: actions/setup-java@v4                                          │
+│         with:                                                                │
+│           distribution: temurin                                              │
+│           java-version: ${{ matrix.java-version }}                           │
+│           cache: maven                                                       │
+│       - run: mvn --batch-mode --no-transfer-progress verify -Dgpg.skip=true  │
+│                                                                              │
+│ Task 2: Create Release workflow                                              │
+│                                                                              │
+│ File: .github/workflows/release.yml                                          │
+│                                                                              │
+│ name: Release                                                                │
+│                                                                              │
+│ on:                                                                          │
+│   push:                                                                      │
+│     tags:                                                                    │
+│       - 'v*'                                                                 │
+│                                                                              │
+│ jobs:                                                                        │
+│   release:                                                                   │
+│     runs-on: ubuntu-latest                                                   │
+│     steps:                                                                   │
+│       - uses: actions/checkout@v4                                            │
+│                                                                              │
+│       - uses: actions/setup-java@v4                                          │
+│         with:                                                                │
+│           distribution: temurin                                              │
+│           java-version: '8'                                                  │
+│           cache: maven                                                       │
+│           server-id: central                                                 │
+│           server-username: CENTRAL_USERNAME                                  │
+│           server-password: CENTRAL_PASSWORD                                  │
+│           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}                    │
+│           gpg-passphrase: MAVEN_GPG_PASSPHRASE                               │
+│                                                                              │
+│       - name: Set version from tag                                           │
+│         run: |                                                               │
+│           VERSION="${GITHUB_REF_NAME#v}"                                     │
+│           echo "Setting version to ${VERSION}"                               │
+│           mvn --batch-mode --no-transfer-progress versions:set               │
+│ -DnewVersion="${VERSION}" -DgenerateBackupPoms=false                         │
+│                                                                              │
+│       - name: Build, sign, and deploy                                        │
+│         run: mvn --batch-mode --no-transfer-progress clean deploy            │
+│         env:                                                                 │
+│           CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}                  │
+│           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}                  │
+│           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}                │
+│                                                                              │
+│ Task 3: Commit and push                                                      │
+│                                                                              │
+│ git add .github/workflows/ci.yml .github/workflows/release.yml               │
+│ git commit -m "Add CI and Release GitHub Actions workflows"                  │
+│ git push origin main                                                         │
+│                                                                              │
+│ Required GitHub secrets (manual setup)                                       │
+│                                                                              │
+│ ┌──────────────────┬─────────────────────────────────────────┐               │
+│ │      Secret      │                  Value                  │               │
+│ ├──────────────────┼─────────────────────────────────────────┤               │
+│ │ GPG_PRIVATE_KEY  │ gpg --export-secret-keys --armor KEY_ID │               │
+│ ├──────────────────┼─────────────────────────────────────────┤               │
+│ │ GPG_PASSPHRASE   │ GPG key passphrase                      │               │
+│ ├──────────────────┼─────────────────────────────────────────┤               │
+│ │ CENTRAL_USERNAME │ Sonatype Central token username         │               │
+│ ├──────────────────┼─────────────────────────────────────────┤               │
+│ │ CENTRAL_PASSWORD │ Sonatype Central token password         │               │
+│ └──────────────────┴─────────────────────────────────────────┘               │
+│                                                                              │
+│ Verification                                                                 │
+│                                                                              │
+│ - Push triggers CI workflow on GitHub Actions tab                            │
+│ - CI should pass on both Java 8 and 17                                       │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+⏺ I'll create the workflow files and then commit and push them.
+
+⏺ Bash(mkdir -p /Users/sergeyk/w/junit-jdom-reporter/.github/workflows)
+  ⎿  Done
+
+⏺ Write(.github/workflows/ci.yml)
+  ⎿  Wrote 23 lines to .github/workflows/ci.yml
+     name: CI
+
+     on:
+       push:
+         branches: [ main ]
+       pull_request:
+         branches: [ main ]
+
+     jobs:
+       build:
+     … +13 lines (ctrl+o to expand)
+
+⏺ Write(.github/workflows/release.yml)
+  ⎿  Wrote 37 lines to .github/workflows/release.yml
+     name: Release
+
+     on:
+       push:
+         tags:
+           - 'v*'
+
+     jobs:
+       release:
+         runs-on: ubuntu-latest
+     … +27 lines (ctrl+o to expand)
+
+⏺ Now committing and pushing.
+
+⏺ Bash(git add .github/workflows/ci.yml .github/workflows/release.yml && git
+      commit -m "Add CI and Release GitHub Actions workflows" && git push origin
+       main)
+  ⎿  [main c2930ef] Add CI and Release GitHub Actions workflows
+      2 files changed, 58 insertions(+)
+      create mode 100644 .github/workflows/ci.yml
+     … +3 lines (ctrl+o to expand)
+
+⏺ Done. Both workflows are live:
+
+  - CI (ci.yml) — runs mvn verify on Java 8 and 17 for every push/PR to main
+  - Release (release.yml) — builds, signs, and deploys to Maven Central on v*
+  tags
+
+  The push should have already triggered the CI workflow. You can check progress
+   at the Actions tab of the repo. Remember to configure the four secrets
+  (GPG_PRIVATE_KEY, GPG_PASSPHRASE, CENTRAL_USERNAME, CENTRAL_PASSWORD) in repo
+  settings before tagging a release.
+
+❯ Yes, it passed. Can you add badge to readme? 
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Update(README.md)
+  ⎿  Added 2 lines
+      1  # junit-jdom-reporter                                           
+      2                                                                  
+      3 +[![CI](https://github.com/walnutgeek/junit-jdom-reporter/action 
+        +s/workflows/ci.yml/badge.svg)](https://github.com/walnutgeek/ju 
+        +nit-jdom-reporter/actions/workflows/ci.yml)                     
+      4 +                                                                
+      5  Little helper that creates JUnit compatible XML using JDOM.     
+      6                                                                  
+      7  A standalone Java library that produces                         
+         JUnit/Surefire-compatible XML and plain-text report files. No   
+         JUnit runtime dependency -- just JDOM 2.0.5. Thread-safe.       
+
+⏺ Bash(git add README.md && git commit -m "Add CI status badge to README" && git
+       push origin main)
+  ⎿  [main 4b91df9] Add CI status badge to README
+      1 file changed, 2 insertions(+)
+     To github.com:walnutgeek/junit-jdom-reporter.git
+        c2930ef..4b91df9  main -> main
+
+⏺ Done. The CI badge is now at the top of the README, right below the title.
+
+❯ /usage 
+  ⎿  Status dialog dismissed
+
+❯ Can you generate checklist for what I need to do with sonar type          
+  registration and gpg key creation?                                        
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Here's the checklist:
+
+  ---
+  Sonatype Central Registration
+
+  - Go to https://central.sonatype.com and sign in (GitHub OAuth works)
+  - Verify the com.walnutgeek namespace — you'll need to prove domain ownership
+  by adding a DNS TXT record central-portal pointing to your Sonatype username
+  (or use a GitHub-based group ID like io.github.walnutgeek instead)
+  - Once the namespace is verified, generate a User Token under your account
+  settings (Account → Generate User Token)
+  - Save the token username and token password — these become CENTRAL_USERNAME
+  and CENTRAL_PASSWORD
+
+  GPG Key Creation
+
+  - Generate a key: gpg --full-generate-key (choose RSA 4096, set an expiration,
+   enter your name/email and a passphrase)
+  - Find your key ID: gpg --list-keys --keyid-format short
+  - Publish the public key to a keyserver: gpg --keyserver keyserver.ubuntu.com 
+  --send-keys YOUR_KEY_ID
+  - Export the private key for CI: gpg --export-secret-keys --armor YOUR_KEY_ID
+  — save this output
+
+  GitHub Secrets Setup
+
+  Go to repo Settings → Secrets and variables → Actions and add:
+
+  - CENTRAL_USERNAME — Sonatype token username
+  - CENTRAL_PASSWORD — Sonatype token password
+  - GPG_PRIVATE_KEY — full armor-encoded private key from export above
+  - GPG_PASSPHRASE — passphrase you set when generating the GPG key
+
+  Verify
+
+  - Tag a test release: git tag v0.1.0 && git push origin v0.1.0
+  - Check the Actions tab — Release workflow should build, sign, and deploy
+  - Confirm the artifact appears at https://central.sonatype.com (may need
+  manual "Publish" on first upload)
