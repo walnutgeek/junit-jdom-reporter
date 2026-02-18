@@ -206,6 +206,66 @@ public class TestSuiteReporterTest {
     }
 
     @Test
+    public void testToDocumentErrorElement() {
+        TestSuiteReporter suite = new TestSuiteReporter("com.example.MyTest");
+        TestCaseReporter tc = suite.testCase("testError");
+        tc.addError("ArithmeticException", "/ by zero", "error trace");
+
+        Document doc = suite.toDocument();
+        Element testcase = doc.getRootElement().getChildren("testcase").get(0);
+        Element error = testcase.getChild("error");
+        assertNotNull(error);
+        assertEquals("ArithmeticException", error.getAttributeValue("type"));
+        assertEquals("/ by zero", error.getAttributeValue("message"));
+        assertEquals("error trace", error.getText());
+    }
+
+    @Test
+    public void testToDocumentSystemErr() {
+        TestSuiteReporter suite = new TestSuiteReporter("com.example.MyTest");
+        suite.testCase("testErr").addStderr("error output\n");
+
+        Document doc = suite.toDocument();
+        Element testcase = doc.getRootElement().getChildren("testcase").get(0);
+        Element syserr = testcase.getChild("system-err");
+        assertNotNull(syserr);
+        assertEquals("error output\n", syserr.getText());
+    }
+
+    @Test
+    public void testWriteTextWithError() throws IOException {
+        TestSuiteReporter suite = new TestSuiteReporter("com.example.MyTest");
+        suite.testCase("testPass").setTime(0.01);
+        TestCaseReporter tc = suite.testCase("testError");
+        tc.setTime(0.03);
+        tc.addError("ArithmeticException", "/ by zero", "error trace");
+
+        File dir = tempDir.getRoot();
+        suite.writeText(dir);
+
+        String content = new String(Files.readAllBytes(
+            new File(dir, "com.example.MyTest.txt").toPath()), "UTF-8");
+        assertTrue(content.contains("Errors: 1"));
+        assertTrue(content.contains("<<< ERROR!"));
+        assertTrue(content.contains("ArithmeticException: / by zero"));
+        assertTrue(content.contains("error trace"));
+    }
+
+    @Test
+    public void testInsertionOrder() {
+        TestSuiteReporter suite = new TestSuiteReporter("com.example.MyTest");
+        suite.testCase("charlie");
+        suite.testCase("alpha");
+        suite.testCase("bravo");
+
+        Document doc = suite.toDocument();
+        List<Element> testcases = doc.getRootElement().getChildren("testcase");
+        assertEquals("charlie", testcases.get(0).getAttributeValue("name"));
+        assertEquals("alpha", testcases.get(1).getAttributeValue("name"));
+        assertEquals("bravo", testcases.get(2).getAttributeValue("name"));
+    }
+
+    @Test
     public void testTimeIsSumOfTestCases() {
         TestSuiteReporter suite = new TestSuiteReporter("com.example.MyTest");
         suite.testCase("test1").setTime(1.0);
